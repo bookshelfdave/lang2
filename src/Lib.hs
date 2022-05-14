@@ -1,28 +1,28 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use newtype instead of data" #-}
 
 module Lib
     ( someFunc, parseMod
     ) where
-
--- import Text.Megaparsec hiding(State, SourcePos)
--- import Text.Megaparsec.Char
--- import Text.Megaparsec.Error
--- import Data.Text (Text)
--- import Data.Void
--- import Control.Monad.Identity
 
 
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L -- (1)
 import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Void
--- import Data.Text hiding(singleton)
--- import Control.Monad.Combinators
--- import Control.Monad.State
--- import Data.Sequence
+import qualified Control.Applicative as A
 
-type Parser = Parsec Void Text
+data CustomParseErrors = ReservedKeyword Text
+  deriving (Eq, Show, Ord)
+
+instance ShowErrorComponent CustomParseErrors where
+  showErrorComponent (ReservedKeyword txt) = T.unpack txt ++ " is a reserved keyword"
+
+
+type Parser = Parsec CustomParseErrors Text
 
 type ParamName = String
 type TypeName = String
@@ -40,32 +40,41 @@ module Main
 fn test()
 fn foo()
 -}
-ws :: Parser String
-ws = many (try (char ' ')
-                <|> try (char '\n')
-                <|> try (char '\r')
-                <|> char '\t')
+-- ws :: Parser String
+-- ws = many (try (char ' ')
+--                 <|> try (char '\n')
+--                 <|> try (char '\r')
+--                 <|> char '\t')
 
-sc :: Parser ()
-sc = L.space
+
+-- Errors
+reservedError :: Text -> Parser a
+reservedError = customFailure . ReservedKeyword
+
+
+-- char utils
+ws :: Parser ()
+ws = L.space
   space1                         -- (2)
   (L.skipLineComment "//")       -- (3)
   (L.skipBlockComment "/*" "*/") -- (4)
 
 lexeme :: Parser a -> Parser a
-lexeme = L.lexeme sc
+lexeme = L.lexeme ws
 
+ch :: Char -> Parser Char
+ch = lexeme . char
+
+st :: Text -> Parser Text
+st = lexeme . string
 
 charLiteral :: Parser Char
 charLiteral = between (char '\'') (char '\'') L.charLiteral
 
--- stringLiteral :: Parser String
--- stringLiteral = char '\"' *> manyTill L.charLiteral (char '\"')
+stringLiteral :: Parser String
+stringLiteral = char '\"' *> manyTill L.charLiteral (char '\"')
 
--- manyTill :: Alternative m => m a -> m end -> m [a]
--- manyTill p end = go
---   where
---     go = ([] <$ end) <|> ((:) <$> p <*> go)
+-- token types
 
 name :: Parser String
 name = do
@@ -79,33 +88,37 @@ typeId = do
         rest <- many lowerChar
         pure (first : rest)
 
-
-keywords = ["module"]
-
 formalParam :: Parser FormalParam
 formalParam = do
             varName <- name
-            _ <- char ':'
+            _ <- ch ':'
             typeName <- typeId
             let p = FormalParam varName typeName
             pure p
 
+
 fnDef :: Parser AST
 fnDef = do
-            string "fn"; ws
+            st "fn" <?> "function keyword"
             fnName <- name; ws
-            char '('; ws
+            
+            ch '('
             params <- formalParam `sepBy` char ','
-            char ')'; ws
-            return $ FnDef fnName params
+            ch ')'
+            if fnName == "butt" then reservedError $ T.pack fnName
+            else return $ FnDef fnName params
 
+-- trace :: String -> a -> a
+-- trace string expr = unsafePerformIO $ do
+--     putStrLn string
+--     return expr
 
 moduleDef :: Parser AST
 moduleDef = do
-                string "module"; ws
-                modName <- some lowerChar; ws
-                char ';'; ws
-                functions <- many fnDef; ws
+                st "module";
+                modName <- lexeme $ (some lowerChar <?> "module name")
+                ch ';'
+                functions <- lexeme $ many fnDef
                 eof
                 return $ ModuleDef modName functions
 
@@ -115,6 +128,8 @@ parseMod input = parse moduleDef "(unknown)" input
 someFunc :: IO ()
 someFunc = do
             putStrLn "testingParseMod"
-            let result = parseMod "module xyz; fn foo(x:String,y:String)"
-            putStrLn $ show result
+            case parseMod "module xyz; fn butt(x:String,y:String)" of
+                Left err -> do
+                        putStrLn $ errorBundlePretty err
+                Right result -> print result
             return ()
