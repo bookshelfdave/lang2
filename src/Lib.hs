@@ -3,7 +3,7 @@
 {-# HLINT ignore "Use newtype instead of data" #-}
 
 module Lib
-    ( someFunc, parseMod
+    ( someFunc, parseMod, name, Parser, CustomParseErrors
     ) where
 
 
@@ -75,11 +75,10 @@ stringLiteral :: Parser String
 stringLiteral = char '\"' *> manyTill L.charLiteral (char '\"')
 
 -- token types
-
 name :: Parser String
 name = do
         first <- lowerChar
-        rest <- many lowerChar
+        rest <- many lowerChar; ws
         pure (first : rest)
 
 typeId :: Parser String
@@ -101,7 +100,6 @@ fnDef :: Parser AST
 fnDef = do
             st "fn" <?> "function keyword"
             fnName <- name; ws
-            
             ch '('
             params <- formalParam `sepBy` char ','
             ch ')'

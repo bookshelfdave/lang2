@@ -51,3 +51,11 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - Lang2
+    - HUnit >= 1.6.2
+    - hspec-megaparsec >= 2.2.0
+    - hspec >= 2.8.5
+    - containers >=0.6.4
+    - megaparsec >=9.2
+    - mtl >=2.2.2
+    - parser-combinators >=1.3
+    - text >=1.2.5
