@@ -3,7 +3,18 @@
 {-# HLINT ignore "Use newtype instead of data" #-}
 
 module Lib
-    ( someFunc, parseMod, name, Parser, CustomParseErrors
+    ( 
+    formalParam,
+    name, 
+    parseMod, 
+    someFunc, 
+    typeId, 
+    undefinedTypeError,
+    CustomParseErrors, 
+    FormalParam(..),
+    ParamName,
+    TypeName,
+    Parser
     ) where
 
 
@@ -15,11 +26,16 @@ import qualified Data.Text as T
 import Data.Void
 import qualified Control.Applicative as A
 
-data CustomParseErrors = ReservedKeyword Text
+import Types
+
+data CustomParseErrors = 
+    ReservedKeyword Text | 
+    UndefinedType Text
   deriving (Eq, Show, Ord)
 
 instance ShowErrorComponent CustomParseErrors where
   showErrorComponent (ReservedKeyword txt) = T.unpack txt ++ " is a reserved keyword"
+  showErrorComponent (UndefinedType txt) = "The type " ++ T.unpack txt ++ " is not defined"
 
 
 type Parser = Parsec CustomParseErrors Text
@@ -28,28 +44,19 @@ type ParamName = String
 type TypeName = String
 
 data FormalParam = FormalParam ParamName TypeName
-    deriving (Show)
+    deriving (Show, Eq)
 
 data AST =
     ModuleDef String [AST] |
     FnDef String [FormalParam]
     deriving (Show)
 
-{-
-module Main
-fn test()
-fn foo()
--}
--- ws :: Parser String
--- ws = many (try (char ' ')
---                 <|> try (char '\n')
---                 <|> try (char '\r')
---                 <|> char '\t')
-
-
 -- Errors
 reservedError :: Text -> Parser a
 reservedError = customFailure . ReservedKeyword
+
+undefinedTypeError :: Text -> Parser a
+undefinedTypeError = customFailure . UndefinedType
 
 
 -- char utils
@@ -78,47 +85,47 @@ stringLiteral = char '\"' *> manyTill L.charLiteral (char '\"')
 name :: Parser String
 name = do
         first <- lowerChar
-        rest <- many lowerChar; ws
+        rest <- many (alphaNumChar <|> char '_'); ws
         pure (first : rest)
 
 typeId :: Parser String
 typeId = do
         first <- upperChar
-        rest <- many lowerChar
+        rest <- many lowerChar; ws
         pure (first : rest)
 
 formalParam :: Parser FormalParam
 formalParam = do
             varName <- name
             _ <- ch ':'
-            typeName <- typeId
-            let p = FormalParam varName typeName
-            pure p
+            typeName <- typeId; ws
+            if not (typeInScope typeName "") then
+                undefinedTypeError $ T.pack typeName
+            else 
+                return $ FormalParam varName typeName
 
-
-fnDef :: Parser AST
+fnDef :: Parser ()
 fnDef = do
             st "fn" <?> "function keyword"
             fnName <- name; ws
             ch '('
             params <- formalParam `sepBy` char ','
             ch ')'
-            if fnName == "butt" then reservedError $ T.pack fnName
-            else return $ FnDef fnName params
+            return ()
 
--- trace :: String -> a -> a
--- trace string expr = unsafePerformIO $ do
---     putStrLn string
---     return expr
 
-moduleDef :: Parser AST
+-- if fnName == "butt" then reservedError $ T.pack fnName
+-- else return $ FnDef fnName params
+
+
+moduleDef :: Parser ()
 moduleDef = do
                 st "module";
                 modName <- lexeme $ (some lowerChar <?> "module name")
                 ch ';'
                 functions <- lexeme $ many fnDef
                 eof
-                return $ ModuleDef modName functions
+                return () -- $ ModuleDef modName functions
 
 --parseMod :: Text -> Either String AST
 parseMod input = parse moduleDef "(unknown)" input
@@ -131,3 +138,10 @@ someFunc = do
                         putStrLn $ errorBundlePretty err
                 Right result -> print result
             return ()
+
+
+{-
+module Stuff
+
+
+-}
