@@ -25,6 +25,8 @@ source-repository head
 
 library
   exposed-modules:
+      AST
+      Errors
       Lib
       Types
   other-modules:

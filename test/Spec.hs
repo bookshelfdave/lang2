@@ -5,9 +5,10 @@ import Test.Hspec
 import Test.Hspec.Megaparsec
 import Text.Megaparsec
 import Text.Megaparsec.Char
+import Text.Megaparsec.Error
 import Data.Text
 import Lib
-import Lib (FormalParam(..))
+import Lib (FormalParam(..), CustomParseErrors (UndefinedType))
 
 
 -- test1 = TestCase (assertEqual "for (foo 3)," (1,2) (1,2))
@@ -60,8 +61,9 @@ testTypeId =
                 parse (typeId :: Parser String) "test" `shouldFailOn` "foo"
             it "type starting with whitespace" $
                 parse (typeId :: Parser String) "test" `shouldFailOn` "  foo"
-            it "undefined type" $
-                parse (typeId :: Parser String) "test" "foo" `shouldFailWith` err undefinedTypeError
+            it "invalid type" $
+                parse (typeId :: Parser String) "test" "foo" `shouldFailWith` err 0 (utok 'f' <> elabel "uppercase letter")
+                --parse (typeId :: Parser String) "test" "foo" `shouldFailWith` errFancy 1 (fancy $ ErrorCustom $ UndefinedType "foo")
 
 
 

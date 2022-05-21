@@ -6,11 +6,12 @@ module Lib
     ( 
     formalParam,
     name, 
+    parseExpr,
     parseMod, 
     someFunc, 
     typeId, 
     undefinedTypeError,
-    CustomParseErrors, 
+    CustomParseErrors(..), 
     FormalParam(..),
     ParamName,
     TypeName,
@@ -25,31 +26,15 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void
 import qualified Control.Applicative as A
+import Control.Monad.Combinators.Expr
 
+import AST
+import Errors
 import Types
-
-data CustomParseErrors = 
-    ReservedKeyword Text | 
-    UndefinedType Text
-  deriving (Eq, Show, Ord)
-
-instance ShowErrorComponent CustomParseErrors where
-  showErrorComponent (ReservedKeyword txt) = T.unpack txt ++ " is a reserved keyword"
-  showErrorComponent (UndefinedType txt) = "The type " ++ T.unpack txt ++ " is not defined"
 
 
 type Parser = Parsec CustomParseErrors Text
 
-type ParamName = String
-type TypeName = String
-
-data FormalParam = FormalParam ParamName TypeName
-    deriving (Show, Eq)
-
-data AST =
-    ModuleDef String [AST] |
-    FnDef String [FormalParam]
-    deriving (Show)
 
 -- Errors
 reservedError :: Text -> Parser a
@@ -68,6 +53,7 @@ ws = L.space
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme ws
+
 
 ch :: Char -> Parser Char
 ch = lexeme . char
@@ -127,8 +113,53 @@ moduleDef = do
                 eof
                 return () -- $ ModuleDef modName functions
 
+binary :: Text -> (Expr -> Expr -> Expr) -> Operator Parser Expr
+binary  oname f = InfixL  (f <$ st oname)
+
+prefix, postfix :: Text -> (Expr -> Expr) -> Operator Parser Expr
+prefix  oname f = Prefix  (f <$ st oname)
+postfix oname f = Postfix (f <$ st oname)
+
+operatorTable :: [[Operator Parser Expr]]
+operatorTable =
+  [ [ prefix "-" Negation
+    , prefix "+" id
+    ]
+  , [ binary "*" Product
+    , binary "/" Division
+    ]
+  , [ binary "+" Sum
+    , binary "-" Subtr
+    ]
+  ]
+
+pVariable :: Parser Expr
+pVariable = Var <$> lexeme
+  ((:) <$> letterChar <*> many alphaNumChar <?> "variable")
+
+pInteger :: Parser Expr
+pInteger = Int <$> lexeme L.decimal
+
+parens :: Parser a -> Parser a
+parens = between (st "(") (st ")")
+
+pTerm :: Parser Expr
+pTerm = choice
+  [ parens pExpr
+  , pVariable
+  , pInteger
+  ]
+
+pExpr :: Parser Expr
+pExpr = makeExprParser pTerm operatorTable
+
+
+
 --parseMod :: Text -> Either String AST
 parseMod input = parse moduleDef "(unknown)" input
+
+parseExpr input = parse pExpr "(unknown)" input
+
 
 someFunc :: IO ()
 someFunc = do
