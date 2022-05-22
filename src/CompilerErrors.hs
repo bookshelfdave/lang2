@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use newtype instead of data" #-}
 
-module Errors
+module CompilerErrors
     ( 
     CustomParseErrors(..)
     ) where

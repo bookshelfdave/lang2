@@ -84,8 +84,17 @@ testFormalParam =
             it "typeId can't be a name" $
                 parse (formalParam :: Parser FormalParam) "test" `shouldFailOn` "foo:int"
 
+testFnDef :: IO ()
+testFnDef = 
+    hspec $ do
+        describe "function def" $ do
+            it "should parse a function body" $
+                parse (fnDef :: Parser [Expr]) ""  
+                    `shouldSucceedOn` "fn test(a:Int) { 1+2+a; }" 
+
 main :: IO ()
 main = do
         testName
         testTypeId
         testFormalParam
+        testFnDef

@@ -4,14 +4,16 @@
 
 module Lib
     ( 
+    fnDef,
     formalParam,
     name, 
     parseExpr,
-    parseMod, 
+    --parseMod, 
     someFunc, 
     typeId, 
     undefinedTypeError,
     CustomParseErrors(..), 
+    Expr(..),
     FormalParam(..),
     ParamName,
     TypeName,
@@ -29,7 +31,7 @@ import qualified Control.Applicative as A
 import Control.Monad.Combinators.Expr
 
 import AST
-import Errors
+import CompilerErrors
 import Types
 
 
@@ -55,31 +57,38 @@ lexeme :: Parser a -> Parser a
 lexeme = L.lexeme ws
 
 
+-- Parse a single character, ignore trailing whitespace
 ch :: Char -> Parser Char
 ch = lexeme . char
 
+-- Parse a string, ignore trailing whitespace
 st :: Text -> Parser Text
 st = lexeme . string
 
+-- parse a character literal: ex 'x'
 charLiteral :: Parser Char
 charLiteral = between (char '\'') (char '\'') L.charLiteral
 
+-- parse a string literal: ex "foo"
 stringLiteral :: Parser String
 stringLiteral = char '\"' *> manyTill L.charLiteral (char '\"')
 
--- token types
+-- things that aren't types that have a name
 name :: Parser String
 name = do
         first <- lowerChar
         rest <- many (alphaNumChar <|> char '_'); ws
         pure (first : rest)
 
+-- all types start with an uppercase char
 typeId :: Parser String
 typeId = do
         first <- upperChar
         rest <- many lowerChar; ws
         pure (first : rest)
 
+-- a name:type pair
+-- foo:Type
 formalParam :: Parser FormalParam
 formalParam = do
             varName <- name
@@ -90,28 +99,23 @@ formalParam = do
             else 
                 return $ FormalParam varName typeName
 
-fnDef :: Parser ()
-fnDef = do
-            st "fn" <?> "function keyword"
-            fnName <- name; ws
-            ch '('
-            params <- formalParam `sepBy` char ','
-            ch ')'
-            return ()
 
 
 -- if fnName == "butt" then reservedError $ T.pack fnName
 -- else return $ FnDef fnName params
 
 
-moduleDef :: Parser ()
-moduleDef = do
-                st "module";
-                modName <- lexeme $ (some lowerChar <?> "module name")
-                ch ';'
-                functions <- lexeme $ many fnDef
-                eof
-                return () -- $ ModuleDef modName functions
+-- moduleDef :: Parser ()
+-- moduleDef = do
+--                 st "module";
+--                 modName <- lexeme $ (some lowerChar <?> "module name")
+--                 ch ';'
+--                 functions <- lexeme $ many fnDef
+--                 eof
+--                 return () -- $ ModuleDef modName functions
+
+
+-- expressions
 
 binary :: Text -> (Expr -> Expr -> Expr) -> Operator Parser Expr
 binary  oname f = InfixL  (f <$ st oname)
@@ -154,25 +158,39 @@ pExpr :: Parser Expr
 pExpr = makeExprParser pTerm operatorTable
 
 
+---
+
+fnDef :: Parser [Expr]
+fnDef = do
+            st "fn" <?> "function definition"
+            fnName <- name; ws
+            ch '('
+            params <- formalParam `sepBy` char ','
+            ch ')'
+            -- no return type yet
+            ch '{'
+            body <- fnBody
+            ch '}'
+            return body
+
+fnBody :: Parser [Expr]
+fnBody = do
+            e <- pExpr 
+            ch ';'
+            return [e]
 
 --parseMod :: Text -> Either String AST
-parseMod input = parse moduleDef "(unknown)" input
+--parseMod input = parse moduleDef "(unknown)" input
 
 parseExpr input = parse pExpr "(unknown)" input
 
 
 someFunc :: IO ()
 someFunc = do
-            putStrLn "testingParseMod"
-            case parseMod "module xyz; fn butt(x:String,y:String)" of
-                Left err -> do
-                        putStrLn $ errorBundlePretty err
-                Right result -> print result
-            return ()
-
-
-{-
-module Stuff
-
-
--}
+            putStrLn "Lang2 compiler 0.1.0"
+            -- putStrLn "testingParseMod"
+            -- case parseMod "module xyz; fn butt(x:String,y:String)" of
+            --     Left err -> do
+            --             putStrLn $ errorBundlePretty err
+            --     Right result -> print result
+            -- return ()
