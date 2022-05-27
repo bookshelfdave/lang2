@@ -1,12 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Data.Text
+import System.IO
 
 --import Test.HUnit
 import Data.Void
-import AST (Decl(..), FnDef(..))
+import AST (Decl(..), FnDef(..), Stmt(..))
 import Lib
-import Lib (CustomParseErrors(UndefinedType), FormalParam(..))
 import Test.Hspec
 import Test.Hspec.Megaparsec
 import Text.Megaparsec
@@ -105,6 +105,39 @@ testVarDecl =
         parse (varDecl :: Parser Decl) "" `shouldSucceedOn`
         "var x:Int = 1 + 2 + (5*4);"
 
+testFnBody :: IO ()
+testFnBody =
+  hspec $ do
+    describe "Function bodies" $ do
+      it "should contain at least one statement" $
+        parse (fnDef :: Parser FnDef) "" `shouldFailOn` "fn foo(x:Int, y:Int) -> Int {}"
+      it "can contain a single statement being a return" $
+        parse (fnDef :: Parser FnDef) "" `shouldSucceedOn` "fn foo(x:Int, y:Int) -> Int { return 1;}"
+      it "needs a ; after a statement" $
+        parse (fnDef :: Parser FnDef) "" `shouldFailOn` "fn foo(x:Int, y:Int) -> Int { return 1}"
+      it "can contain variable decls, return statements, expressions" $
+        parse (fnDef :: Parser FnDef) "" `shouldSucceedOn`
+        "fn foo(x:Int, y:Int) -> Int { \
+         \ var a:Int = 1; \
+         \ print(a); \
+         \  return 1; \
+         \  }"
+
+testExpr :: IO ()
+testExpr =
+  hspec $ do
+    describe "expressions" $ do
+      it "can contain a single integer" $
+        parse (pExpr :: Parser Expr) "" `shouldSucceedOn` "1"
+      it "can parse simple arithmetic" $
+        parse (pExpr :: Parser Expr) "" `shouldSucceedOn` "1 + 1 + (5 - 3) * (2 / 5)"
+      it "can contain function calls" $
+        parse (pExpr :: Parser Expr) "" `shouldSucceedOn` "1 + length(a)"
+      it "can contain function calls and variable references (a)" $
+        parse (pExpr :: Parser Expr) "" `shouldSucceedOn` "length(a) + b + 1"
+      it "can contain function calls and variable references (b)" $
+        parse (pExpr :: Parser Expr) "" `shouldSucceedOn` "b + length(a) + 1"
+
 
 main :: IO ()
 main = do
@@ -113,3 +146,5 @@ main = do
   testFormalParam
   testFnDef
   testVarDecl
+  testFnBody
+  testExpr

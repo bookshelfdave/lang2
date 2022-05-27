@@ -4,10 +4,12 @@
 {-# HLINT ignore "Use newtype instead of data" #-}
 module Lib
   ( fnDef
+  , fnBody
   , formalParam
   , name
   , parseExpr
   , parseFnDef
+  , pExpr
   , someFunc
   , typeId
   , undefinedTypeError
@@ -159,9 +161,7 @@ varDecl = do
   st "var"
   param <- formalParam
   ch '='
-  expr <- pExpr
-  semi
-  return $ VarDecl param expr
+  VarDecl param <$> pExpr
 
 --- functions
 fnReturnType :: Parser String
@@ -190,7 +190,7 @@ fnReturn = do
 
 fnBodyStmt :: Parser Stmt
 fnBodyStmt = do
-  stmt <- choice [Decl <$> varDecl, Expr <$> pExpr, fnReturn]
+  stmt <- choice [Decl <$> varDecl, try fnReturn, Expr <$> pExpr]
   semi
   return stmt
 
@@ -215,8 +215,8 @@ fnDef = do
 
 --parseMod :: Text -> Either String AST
 --parseMod input = parse moduleDef "(unknown)" input
-parseExpr input = parse pExpr "(unknown)" input
-parseFnDef input = parse fnDef "(unknown)" input
+parseExpr = parse pExpr "(unknown)"
+parseFnDef = parse fnDef "(unknown)"
 
 someFunc :: IO ()
 someFunc = do
