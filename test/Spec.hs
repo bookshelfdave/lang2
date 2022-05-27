@@ -128,15 +128,21 @@ testExpr =
   hspec $ do
     describe "expressions" $ do
       it "can contain a single integer" $
-        parse (pExpr :: Parser Expr) "" `shouldSucceedOn` "1"
+        parse (pExpr <* eof:: Parser Expr) "" `shouldSucceedOn` "1"
+      it "can contain a single variable" $
+        parse (pExpr <* eof :: Parser Expr) "" `shouldSucceedOn` "a"
+      it "should parse a Type name" $
+        parse (pExpr <* eof :: Parser Expr) "" `shouldFailOn` "Foo"
       it "can parse simple arithmetic" $
-        parse (pExpr :: Parser Expr) "" `shouldSucceedOn` "1 + 1 + (5 - 3) * (2 / 5)"
+        parse (pExpr <* eof :: Parser Expr) "" `shouldSucceedOn` "1 + 1 + (5 - 3) * (2 / 5)"
       it "can contain function calls" $
-        parse (pExpr :: Parser Expr) "" `shouldSucceedOn` "1 + length(a)"
+        parse (pExpr <* eof :: Parser Expr) "" `shouldSucceedOn` "1 + length(a)"
+      it "should fail to parse function calls separated by spaces" $
+        parse (pExpr <* eof:: Parser Expr) "" `shouldFailOn` "length(a) length(b)"
       it "can contain function calls and variable references (a)" $
-        parse (pExpr :: Parser Expr) "" `shouldSucceedOn` "length(a) + b + 1"
+        parse (pExpr <* eof :: Parser Expr) "" `shouldSucceedOn` "length(a) + b + 1"
       it "can contain function calls and variable references (b)" $
-        parse (pExpr :: Parser Expr) "" `shouldSucceedOn` "b + length(a) + 1"
+        parse (pExpr <* eof :: Parser Expr) "" `shouldSucceedOn` "b + length(a) + 1"
 
 
 main :: IO ()

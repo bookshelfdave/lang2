@@ -131,7 +131,7 @@ operatorTable =
 
 pVariable :: Parser Expr
 pVariable =
-  Var <$> lexeme ((:) <$> letterChar <*> many alphaNumChar <?> "variable")
+  Var <$> name <?> "variable"
 
 pInteger :: Parser Expr
 pInteger = Int <$> lexeme L.decimal
