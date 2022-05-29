@@ -24,10 +24,10 @@ testName :: IO ()
 testName =
   hspec $ do
     describe "name parser" $ do
-      it "should parse a simple name" $ does "foo" `shouldParse` "foo"
-      it "should parse a simple name with trailing whitespace" $
+      it "can parse a simple name" $ does "foo" `shouldParse` "foo"
+      it "can parse a simple name with trailing whitespace" $
         does "foo  " `shouldParse` "foo"
-      it "should eat the whitespace" $
+      it "can eat the whitespace" $
         runParser' name (initialState "foo  ") `succeedsLeaving` ""
       it "can contain numbers" $ does "foo123" `shouldParse` "foo123"
       it "can contain underscores" $
@@ -44,15 +44,15 @@ testTypeId :: IO ()
 testTypeId =
   hspec $ do
     describe "type parser" $ do
-      it "should parse a simple type" $ does "Int" `shouldParse` "Int"
-      it "should parse a simple type with trailing whitespace" $
+      it "can parse a simple type" $ does "Int" `shouldParse` "Int"
+      it "can parse a simple type with trailing whitespace" $
         does "Int  " `shouldParse` "Int"
-      it "should eat the whitespace" $
+      it "can eat the whitespace" $
         runParser' typeId (initialState "Int  ") `succeedsLeaving` ""
     describe "type parser should fail" $ do
-      it "type starting with lowercase letter" $ does `shouldFailOn` "foo"
-      it "type starting with whitespace" $ does `shouldFailOn` "  foo"
-      it "invalid type" $
+      it "can parse a type starting with lowercase letter" $ does `shouldFailOn` "foo"
+      it "can parse a type starting with whitespace" $ does `shouldFailOn` "  foo"
+      it "can't parse an invalid type" $
         does "foo" `shouldFailWith`
         err 0 (utok 'f' <> elabel "uppercase letter")
   where
@@ -64,9 +64,9 @@ testFormalParam :: IO ()
 testFormalParam =
   hspec $ do
     describe "type parser" $ do
-      it "should parse a simple type" $
+      it "can parse a simple type" $
         does "foo:Int" `shouldParse` FormalParam "foo" "Int"
-      it "should parse a simple type with whitespace" $
+      it "can parse a simple type with whitespace" $
         does "foo : Int " `shouldParse` FormalParam "foo" "Int"
     describe "formalParam parser should fail" $ do
       it "can't start with a typeId" $ does `shouldFailOn` "Foo:Int"
@@ -78,9 +78,9 @@ testFnDef :: IO ()
 testFnDef =
   hspec $ do
     describe "function def" $ do
-      it "should parse a function body without return type" $
+      it "can parse a function body without return type" $
         does `shouldSucceedOn` "fn test(a:Int) { 1+2+a; }"
-      it "should parse a function body with return type" $
+      it "can parse a function body with return type" $
         does `shouldSucceedOn` "fn test(a:Int) -> Int { 1+2+a; }"
   where
     does = parse (fnDef :: Parser FnDef) ""
@@ -89,26 +89,26 @@ testVarDecl :: IO ()
 testVarDecl =
   hspec $ do
     describe "variable declarations" $ do
-      it "should should parse a simple expression" $
+      it "can should parse a simple expression" $
         does `shouldSucceedOn` "var x:Int = 1;"
-      it "should should parse a complex expression" $
+      it "can should parse a complex expression" $
         does `shouldSucceedOn` "var x:Int = 1 + 2 + (5*4);"
   where
     does = parse (varDecl :: Parser Decl) ""
 
-testExpr :: IO ()
-testExpr =
+testExprParse :: IO ()
+testExprParse =
   hspec $ do
     describe "expressions" $ do
       it "can contain a single integer" $ does `shouldSucceedOn` "1"
       it "can contain a single variable" $ does `shouldSucceedOn` "a"
-      it "should parse a Type name" $ does `shouldFailOn` "Foo"
+      it "can parse a Type name" $ does `shouldFailOn` "Foo"
       it "can parse simple arithmetic" $
         does `shouldSucceedOn` "1 + 1 + (5 - 3) * (2 / 5)"
       it "can parse simple arithmetic with comments" $
         does `shouldSucceedOn` "1 + 1 + (5 - 3) /* test */ * (2 / 5 /* test */)"
       it "can contain function calls" $ does `shouldSucceedOn` "1 + length(a)"
-      it "should fail to parse function calls separated by spaces" $
+      it "can fail to parse function calls separated by spaces" $
         does `shouldFailOn` "length(a) length(b)"
       it "can contain function calls and variable references (a)" $
         does `shouldSucceedOn` "length(a) + b + 1"
@@ -122,8 +122,31 @@ testExpr =
         does `shouldSucceedOn` "true || false && a"
       it "can use == and !=" $
         does `shouldSucceedOn` "a != b && b == c"
+  where
+    does = parse (pExpr <* eof :: Parser Expr) ""
 
-
+testExprTree :: IO ()
+testExprTree =
+  hspec $ do
+    describe "expressions" $ do
+      it "can parse a variable" $ does "a" `shouldParse` Var "a"
+      it "can parse an integer" $ does "100" `shouldParse` Int 100
+      it "can parse an integer" $ does "-100" `shouldParse` Negation (Int 100)
+      it "can parse true" $ does "true" `shouldParse` Bool True
+      it "can parse bool negation" $ does "!true" `shouldParse` BoolNegation (Bool True)
+      it "can parse addition" $ does "5 + 4" `shouldParse` Sum (Int 5) (Int 4)
+      it "can parse subtraction" $ does "5 - 4" `shouldParse` Subtr (Int 5) (Int 4)
+      it "can parse multiplication" $ does "5 * 4" `shouldParse` Product (Int 5) (Int 4)
+      it "can parse division" $ does "5 / 4" `shouldParse` Division (Int 5) (Int 4)
+      it "can parse and" $ does "a && b" `shouldParse` And (Var "a") (Var "b")
+      it "can parse and" $ does "a || b" `shouldParse` Or (Var "a") (Var "b")
+      it "can parse equality" $ does "a == 1" `shouldParse` Equality (Var "a") (Int 1)
+      it "can parse equality" $ does "a != 1" `shouldParse` NotEquality (Var "a") (Int 1)
+      it "can parse function calls" $ does "a(1 , 2, b)" `shouldParse` FnCall "a" [Int 1, Int 2, Var "b"]
+      it "can parse complex expressions (1)" $ does "true || tree(a, 1*5)" `shouldParse` 
+        Or (Bool True) (FnCall "tree" [Var "a",Product (Int 1) (Int 5)])
+      it "can parse my dear aunt sally" $ does "1+4*5-10/2" `shouldParse`
+        Subtr (Sum (Int 1) (Product (Int 4) (Int 5))) (Division (Int 10) (Int 2))
   where
     does = parse (pExpr <* eof :: Parser Expr) ""
 
@@ -131,7 +154,7 @@ testFnBody :: IO ()
 testFnBody =
   hspec $ do
     describe "Function bodies" $ do
-      it "should contain at least one statement" $
+      it "can contain at least one statement" $
         does `shouldFailOn` "fn foo(x:Int, y:Int) -> Int {}"
       it "can contain a single statement being a return" $
         does `shouldSucceedOn` "fn foo(x:Int, y:Int) -> Int { return 1;}"
@@ -169,4 +192,5 @@ main = do
   testFnDef
   testVarDecl
   testFnBody
-  testExpr
+  testExprParse
+  testExprTree
