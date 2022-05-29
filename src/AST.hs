@@ -6,16 +6,16 @@ module AST
   ( Decl(..)
   , Expr(..)
   , FnDef(..)
-  , FormalParam(..)
+  , TypedParam(..)
   , ParamName
   , Stmt(..)
   , TypeName
   ) where
 
 data Decl
-  = VarDecl FormalParam Expr
+  = VarDecl TypedParam Expr
   | FnDecl FnDef
-  deriving (Show)
+  deriving (Eq, Show, Ord)
 
 data Stmt
   = Block [Stmt]
@@ -24,7 +24,7 @@ data Stmt
   | For
   | IfElse Expr Stmt Stmt
   | Return Expr
-  deriving (Show)
+  deriving (Eq, Show, Ord)
 
 data Expr
   = Var String
@@ -47,23 +47,21 @@ type ParamName = String
 
 type TypeName = String
 
-data FormalParam =
-  FormalParam ParamName TypeName
-  deriving (Eq)
+data TypedParam =
+  TypedParam ParamName TypeName
+  deriving (Eq, Ord, Show)
 
-instance Show FormalParam where
-  show (FormalParam n t) = n ++ ":" ++ t
-
+-- instance Show TypedParam where
+--   show (TypedParam n t) = n ++ ":" ++ t
 data FnDef =
   FnDef
     { fName :: String
     , fReturnType :: TypeName
-    , fParams :: [FormalParam]
+    , fParams :: [TypedParam]
     , fBody :: Stmt -- a single block statement
     }
-
-instance Show FnDef where
-  show f =
-    "<fn " ++ fName f ++ "(" ++ showParams ++ ") -> " ++ fReturnType f ++ ">"
-    where
-      showParams = show (fParams f)
+  deriving (Show, Eq, Ord) -- instance Show FnDef where
+--   show f =
+--     "<fn " ++ fName f ++ "(" ++ showParams ++ ") -> " ++ fReturnType f ++ ">"
+--     where
+--       showParams = show (fParams f)

@@ -5,6 +5,7 @@
 module Lib
   ( fnDef
   , block
+  , fnBodyStmt
   , formalParam
   , name
   , parseExpr
@@ -16,7 +17,7 @@ module Lib
   , varDecl
   , CustomParseErrors(..)
   , Expr(..)
-  , FormalParam(..)
+  , TypedParam(..)
   , ParamName
   , TypeName
   , Parser
@@ -94,7 +95,7 @@ typeId = do
 
 -- a name:type pair
 -- foo:Type
-formalParam :: Parser FormalParam
+formalParam :: Parser TypedParam
 formalParam = do
   varName <- name
   _ <- ch ':'
@@ -102,7 +103,7 @@ formalParam = do
   ws
   if not (typeInScope typeName "")
     then undefinedTypeError $ T.pack typeName
-    else return $ FormalParam varName typeName
+    else return $ TypedParam varName typeName
 
 -- if fnName == "butt" then reservedError $ T.pack fnName
 -- else return $ FnDef fnName params
@@ -187,7 +188,7 @@ fnReturnType = do
   ch '>'
   typeId
 
-fnFormalParams :: Parser [FormalParam]
+fnFormalParams :: Parser [TypedParam]
 fnFormalParams = do
   formalParam `sepBy` ch ','
 
