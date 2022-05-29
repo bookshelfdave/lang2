@@ -3,8 +3,7 @@
 
 {-# HLINT ignore "Use newtype instead of data" #-}
 module AST
-  ( 
-    Decl(..)
+  ( Decl(..)
   , Expr(..)
   , FnDef(..)
   , FormalParam(..)
@@ -18,25 +17,30 @@ data Decl
   | FnDecl FnDef
   deriving (Show)
 
-
 data Stmt
   = Block [Stmt]
   | Decl Decl
   | Expr Expr
   | For
-  | IfElse
+  | IfElse Expr Stmt Stmt
   | Return Expr
   deriving (Show)
 
 data Expr
   = Var String
   | Int Int
+  | Bool Bool
   | Negation Expr
+  | BoolNegation Expr
   | Sum Expr Expr
   | Subtr Expr Expr
   | Product Expr Expr
   | Division Expr Expr
   | FnCall String [Expr]
+  | And Expr Expr
+  | Or Expr Expr
+  | Equality Expr Expr
+  | NotEquality Expr Expr
   deriving (Eq, Ord, Show)
 
 type ParamName = String
@@ -55,10 +59,11 @@ data FnDef =
     { fName :: String
     , fReturnType :: TypeName
     , fParams :: [FormalParam]
-    , fBody :: [Stmt]
+    , fBody :: Stmt -- a single block statement
     }
 
 instance Show FnDef where
-  show f = "<fn " ++ fName f ++ "(" ++ showParams ++ ") -> " ++ fReturnType f ++ ">"
+  show f =
+    "<fn " ++ fName f ++ "(" ++ showParams ++ ") -> " ++ fReturnType f ++ ">"
     where
       showParams = show (fParams f)

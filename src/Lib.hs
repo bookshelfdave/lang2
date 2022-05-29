@@ -4,7 +4,7 @@
 {-# HLINT ignore "Use newtype instead of data" #-}
 module Lib
   ( fnDef
-  , fnBody
+  , block
   , formalParam
   , name
   , parseExpr
@@ -34,6 +34,7 @@ import qualified Text.Megaparsec.Char.Lexer as L -- (1)
 
 import AST
 import CompilerErrors
+import qualified Data.Sequence.Internal.Sorting as Decl
 import Types
 
 type Parser = Parsec CustomParseErrors Text
@@ -124,14 +125,29 @@ postfix oname f = Postfix (f <$ st oname)
 
 operatorTable :: [[Operator Parser Expr]]
 operatorTable =
-  [ [prefix "-" Negation, prefix "+" id]
+  [ [prefix "-" Negation, prefix "+" id, prefix "!" BoolNegation]
   , [binary "*" Product, binary "/" Division]
   , [binary "+" Sum, binary "-" Subtr]
+  , [binary "==" Equality, binary "!=" NotEquality]
+  , [binary "&&" And, binary "||" Or]
   ]
 
 pVariable :: Parser Expr
-pVariable =
-  Var <$> name <?> "variable"
+pVariable = Var <$> name <?> "variable"
+
+pFalse :: Parser Bool
+pFalse = do
+  st "false"
+  return False
+
+pTrue :: Parser Bool
+pTrue = do
+  st "true"
+  return True
+
+pBool :: Parser Expr
+pBool = do
+  Bool <$> (try pTrue <|> pFalse)
 
 pInteger :: Parser Expr
 pInteger = Int <$> lexeme L.decimal
@@ -143,14 +159,15 @@ braces :: Parser a -> Parser a
 braces = between (st "{") (st "}")
 
 pFnCall :: Parser Expr
-pFnCall = do
+pFnCall
   -- TODO: name vs pVariable
+ = do
   fnname <- name
   params <- parens $ pExpr `sepBy` ch ','
   return $ FnCall fnname params
 
 pTerm :: Parser Expr
-pTerm = choice [parens pExpr, try pFnCall, pVariable, pInteger]
+pTerm = choice [parens pExpr, try pBool, try pFnCall, pVariable, pInteger]
 
 pExpr :: Parser Expr
 pExpr = makeExprParser pTerm operatorTable
@@ -174,48 +191,66 @@ fnFormalParams :: Parser [FormalParam]
 fnFormalParams = do
   formalParam `sepBy` ch ','
 
-
 -- data Stmt
 --   = Block 
---   | Decl Decl
---   | Expr Expr
+--   | Decl Decl x
+--   | Expr Expr x
 --   | For
 --   | IfElse
---   | Return
+--   | Return x
+stmtIfElse :: Parser Stmt
+stmtIfElse = do
+  st "if"
+  guard <- pExpr
+  left <- block
+  st "else"
+  right <- block
+  return $ IfElse guard left right
 
-fnReturn :: Parser Stmt
-fnReturn = do
+block :: Parser Stmt
+block = do
+  b <- braces $ some fnBodyStmt
+  return $ Block b
+
+stmtReturn :: Parser Stmt
+stmtReturn = do
   st "return"
   Return <$> pExpr
 
+-- TODO: We need to wrap each in a Stmt
+--       do all parsers specify stmt on their own, or do I mix and match here?
+--       does it matter?
 fnBodyStmt :: Parser Stmt
 fnBodyStmt = do
-  stmt <- choice [Decl <$> varDecl, try fnReturn, Expr <$> pExpr]
-  semi
-  return stmt
-
-fnBody :: Parser [Stmt]
-fnBody = do
-  some fnBodyStmt
+  choice
+    [ Decl <$> varDecl <* semi
+    , try stmtReturn <* semi
+    , try stmtIfElse
+    , Expr <$> pExpr <* semi
+    , block
+    ]
+  --semi
 
 fnDef :: Parser FnDef
 fnDef = do
   st "fn" <?> "function definition"
-  fnName <- name; ws
+  fnName <- name
+  ws
   params <- parens fnFormalParams
   returnType <- optional fnReturnType
-  body <- braces fnBody
+  body <- block
   return
     FnDef
       { fName = fnName
       , fReturnType = fromMaybe "Unit" returnType
       , fParams = params
-      , fBody = body
+      , fBody = body -- a single block statement
       }
 
 --parseMod :: Text -> Either String AST
 --parseMod input = parse moduleDef "(unknown)" input
 parseExpr = parse pExpr "(unknown)"
+
 parseFnDef = parse fnDef "(unknown)"
 
 someFunc :: IO ()
