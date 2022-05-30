@@ -1,10 +1,10 @@
 module Main where
 
-import Lib
-import Lower1
-import Typechecking
 import Codegen
+import Lower1
+import Parser
+import Typechecking
 
 main :: IO ()
 main = do
-        putStrLn "Lang2 0.1.0"
+  putStrLn "Lang2 0.1.0"

@@ -3,11 +3,11 @@
 import Data.Text
 import System.IO
 
-import AST (Decl(..), FnDef(..), Stmt(..), TypedParam(..))
+import AST (Decl(..), FnDef(..), Module(..), Stmt(..), TypedParam(..))
 
 --import Test.HUnit
 import Data.Void
-import Lib
+import Parser
 import Test.Hspec
 import Test.Hspec.Megaparsec
 import Text.Megaparsec
@@ -127,7 +127,6 @@ testExprTree :: IO ()
 testExprTree =
   hspec $ do
     describe "expression trees" $ do
-      
       it "returns a Var" $ does "a" `shouldParse` Var "a"
       it "returns an Int" $ does "100" `shouldParse` Int 100
       it "returns a negated Int" $ does "-100" `shouldParse` Negation (Int 100)
@@ -196,38 +195,33 @@ testFnBody =
   where
     does = parse (fnDef :: Parser FnDef) ""
 
--- fnBodyStmt :: Parser Stmt
--- fnBodyStmt = do
---   choice
---     [ Decl <$> varDecl <* semi
---     , try stmtReturn <* semi
---     , try stmtIfElse
---     , Expr <$> pExpr <* semi
---     , block
--- data Decl
---   = VarDecl FormalParam Expr
---   | FnDecl FnDef
---   deriving (Show)
--- data Stmt
---   = Block [Stmt]
---   | Decl Decl
---   | Expr Expr
---   | For
---   | IfElse Expr Stmt Stmt
---   | Return Expr
---   deriving (Show)
 testFnBodyStmt :: IO ()
 testFnBodyStmt =
   hspec $ do
-    describe "Statements" $ do
+    describe "statements" $
       -- TODO: fix descriptions
-      it "can parse variable declarations" $ does "var a:Int = 1;" `shouldParse` 
+     do
+      it "can parse variable declarations" $
+        does "var a:Int = 1;" `shouldParse`
         Decl (VarDecl (TypedParam "a" "Int") (Int 1))
-      it "can parse a variable" $ does "var a:Int = 1;" `shouldParse` 
+      it "can parse a variable" $
+        does "var a:Int = 1;" `shouldParse`
         Decl (VarDecl (TypedParam "a" "Int") (Int 1))
-
   where
     does = parse (fnBodyStmt :: Parser Stmt) ""
+
+testModDef :: IO ()
+testModDef =
+  hspec $ do
+    describe "module definitions" $ do
+      it "can parse module definitions" $
+        does `shouldSucceedOn` "module foo; fn foo() -> Int {return 1;}"
+      it "needs a ; after module def" $
+        does `shouldFailOn` "module foo fn foo() -> Int {return 1;}"
+      it "needs module name" $
+        does `shouldFailOn` "module; fn foo() -> Int {return 1;}"
+  where
+    does = parse (modDef :: Parser Module) ""
 
 main :: IO ()
 main = do
@@ -240,3 +234,4 @@ main = do
   testExprParse
   testExprTree
   testFnBodyStmt
+  testModDef

@@ -28,8 +28,8 @@ library
       AST
       Codegen
       CompilerErrors
-      Lib
       Lower1
+      Parser
       Symbols
       Typechecking
       Types

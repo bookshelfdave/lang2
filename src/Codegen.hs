@@ -2,10 +2,11 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 module Codegen
-  ( gen1) where
+  ( gen1
+  ) where
 
 import AST
 
 gen1 :: IO ()
 gen1 = do
-    putStrLn "public static void main()"
+  putStrLn "public static void main()"

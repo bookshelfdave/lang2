@@ -2,12 +2,13 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {-# HLINT ignore "Use newtype instead of data" #-}
-module Lib
+module Parser
   ( block
   , fnBodyStmt
   , fnDef
   , formalParam
   , name
+  , modDef
   , parseExpr
   , parseFnDef
   , pExpr
@@ -247,9 +248,32 @@ fnDef = do
       , fBody = body -- a single block statement
       }
 
+fnDecl :: Parser Decl
+fnDecl = do
+  FnDecl <$> fnDef
+
+-- data Module
+--   = Mod String [Decl]
+-- data Decl
+--   = VarDecl TypedParam Expr
+--   | FnDecl FnDef
+--   deriving (Eq, Show, Ord)
+modDecls :: Parser [Decl]
+modDecls
+  -- TODO when we do var defs
+  --some $ choice [fnDecl]
+ = do
+  some fnDecl
+
+modDef :: Parser Module
+modDef = do
+  st "module"
+  modName <- name
+  semi
+  Mod modName <$> modDecls
+
 --parseMod :: Text -> Either String AST
 --parseMod input = parse moduleDef "(unknown)" input
 parseExpr = parse pExpr "(unknown)"
 
 parseFnDef = parse fnDef "(unknown)"
-

@@ -2,16 +2,14 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 module Typechecking
-  ( typecheck1) where
+  ( typecheck1
+  ) where
 
 import AST
 
 typecheck1 :: IO ()
 typecheck1 = do
-    putStrLn "typecheck1"
-    
-
-
+  putStrLn "typecheck1"
 -- data Expr
 --   = Var String
 --   | Int Int

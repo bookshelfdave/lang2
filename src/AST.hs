@@ -6,15 +6,16 @@ module AST
   ( Decl(..)
   , Expr(..)
   , FnDef(..)
-  , Module (..)
+  , Module(..)
   , ParamName
   , Stmt(..)
   , TypeName
   , TypedParam(..)
   ) where
 
-data Module
-  = Mod String [Decl]
+data Module =
+  Mod String [Decl]
+  deriving (Eq, Show, Ord)
 
 data Decl
   = VarDecl TypedParam Expr
@@ -45,7 +46,7 @@ data Expr
   | Or Expr Expr
   | Equality Expr Expr
   | NotEquality Expr Expr
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Show, Ord)
 
 type ParamName = String
 
@@ -53,7 +54,7 @@ type TypeName = String
 
 data TypedParam =
   TypedParam ParamName TypeName
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Show, Ord)
 
 -- instance Show TypedParam where
 --   show (TypedParam n t) = n ++ ":" ++ t
@@ -64,7 +65,7 @@ data FnDef =
     , fParams :: [TypedParam]
     , fBody :: Stmt -- a single block statement
     }
-  deriving (Show, Eq, Ord) -- instance Show FnDef where
+  deriving (Eq, Show, Ord) -- instance Show FnDef where
 --   show f =
 --     "<fn " ++ fName f ++ "(" ++ showParams ++ ") -> " ++ fReturnType f ++ ">"
 --     where
