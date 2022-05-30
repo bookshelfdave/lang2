@@ -3,24 +3,23 @@
 
 {-# HLINT ignore "Use newtype instead of data" #-}
 module Lib
-  ( fnDef
-  , block
+  ( block
   , fnBodyStmt
+  , fnDef
   , formalParam
   , name
   , parseExpr
   , parseFnDef
   , pExpr
-  , someFunc
   , typeId
   , undefinedTypeError
   , varDecl
   , CustomParseErrors(..)
   , Expr(..)
-  , TypedParam(..)
   , ParamName
-  , TypeName
   , Parser
+  , TypedParam(..)
+  , TypeName
   ) where
 
 import qualified Control.Applicative as A
@@ -254,12 +253,3 @@ parseExpr = parse pExpr "(unknown)"
 
 parseFnDef = parse fnDef "(unknown)"
 
-someFunc :: IO ()
-someFunc = do
-  putStrLn "Lang2 compiler 0.1.0"
-            -- putStrLn "testingParseMod"
-            -- case parseMod "module xyz; fn butt(x:String,y:String)" of
-            --     Left err -> do
-            --             putStrLn $ errorBundlePretty err
-            --     Right result -> print result
-            -- return ()
