@@ -6,11 +6,15 @@ module AST
   ( Decl(..)
   , Expr(..)
   , FnDef(..)
-  , TypedParam(..)
+  , Module (..)
   , ParamName
   , Stmt(..)
   , TypeName
+  , TypedParam(..)
   ) where
+
+data Module
+  = Mod String [Decl]
 
 data Decl
   = VarDecl TypedParam Expr

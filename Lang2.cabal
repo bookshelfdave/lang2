@@ -30,6 +30,7 @@ library
       CompilerErrors
       Lib
       Lower1
+      Symbols
       Typechecking
       Types
   other-modules:
